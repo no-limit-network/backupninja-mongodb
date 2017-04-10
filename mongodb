@@ -4,6 +4,7 @@
 #
 
 getconf tar /bin/tar
+getconf mongo /usr/bin/mongo
 getconf mongodump /usr/bin/mongodump
 getconf backupdir /var/backups/mongodb
 getconf dumpopts ""
@@ -14,6 +15,16 @@ getconf mongopass
 getconf mongodb
 getconf mongocollection
 getconf vsname
+
+lock_db () {
+  echo "Locking mongo database"
+  $mongo admin --eval 'printjson(db.fsyncLock());' > /dev/null 2>&1
+}
+
+unlock_db () {
+  echo "Unlocking mongo database"
+  $mongo admin --eval 'printjson(db.fsyncUnlock());' > /dev/null 2>&1
+}
 
 # Decide if the handler should operate on a vserver or on the host.
 # In the former case, check that $vsname exists and is running.
@@ -110,8 +121,9 @@ if [ ! $test ]; then
                 warning "Failed to remove old dump"
         fi
 
-
+	lock_db
         outputdump=`su $user -c "$execdump" 2>&1`
+	unlock_db
         codedump=$?
 
         if [ "$codedump" == "0" ]; then
